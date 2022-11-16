@@ -8,8 +8,11 @@ module reservation_station (
     //output to ID
     //input from CDB
 );
+
+
     always @(posedge clk) begin
         if (reset) begin
+            
 
         end
         else if (ready) begin
