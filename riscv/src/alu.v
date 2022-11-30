@@ -1,86 +1,172 @@
 `include "def.v"
 
 module alu(
-    input wire work,
+    input wire clk,
+    input wire reset,
+    input wire ready,
 
-    input wire[`PC_LEN] pc,
+    input wire work,
     input wire[`OP_LEN] op,
+    input wire[`IMM_LEN] imm,
+    input wire[`PC_LEN] pc,
+    input wire[`ROB_LEN] robpos,
     input wire[`INT_LEN] rs1,
     input wire[`INT_LEN] rs2,
-    input wire[`IMM_LEN] imm,
-    input wire[`ROB_LEN] rob_pos,
 
-    output reg flag,
-    output reg [`DATA_LEN] rd,
-    output reg [`ROB_LEN] rob_to
+    output reg alu_flag,
+    output reg alu_isjump,
+    output reg [`DATA_LEN] alu_val,
+    output reg [`DATA_LEN] alu_jumpto,
+    output reg [`ROB_LEN] alu_robpos
 );
     
     always @(posedge clk) begin
-        flag = work;
-        if (work) begin
-            rob_to <= rob_pos;
-            case (op) 
-                `ADDI: begin
-                    rd <= rs1 + imm;
-                end
-                `SLTI: begin
-                    rd <= ($signed(rs1) < $signed(rs2));
-                end
-                `SLTIU: begin
-                    rd <= (rs1 < imm);
-                end
-                `XORI: begin
-                    rd <= rs1 ^ imm;
-                end
-                `ORI: begin
-                    rd <= rs1 | imm;
-                end
-                `ANDI: begin
-                    rd <= rs1 & imm;
-                end
-                `SLLI: begin
-                    rd <= (rs1 << imm);
-                end
-                `SRLI: begin
-                    rd <= (rs1 >> imm);
-                end
-                `SRAI: begin
-                    rd <= ($signed(rs1) >> imm);
-                end
-                `ADD: begin
-                    rd <= rs1 + rs2;
-                end
-                `SUB: begin
-                    rd <= rs1 - rs2;
-                end
-                `SLL: begin
-                    rd <= (rs1 << rs2);
-                end
-                `SLT: begin
-                    rd <= ($signed(rs1) < $signed(rs2));
-                end
-                `SLTU: begin
-                    rd <= (rs1 < rs2);
-                end
-                `XOR: begin
-                    rd <= (rs1 ^ rs2);
-                end
-                `SRL: begin
-                    rd <= (rs1 >> rs2);
-                end
-                `SRA: begin
-                    rd <= ($signed(rs1) >> rs2);
-                end
-                `OR: begin
-                    rd <= (rs1 | rs2);
-                end
-                `AND: begin
-                    rd <= (rs1 & rs2);
-                end
-                default: begin
-                    flag <= 0;
-                end
-            endcase
+        if (reset) begin
+            alu_flag <= 0;
+        end
+        else if (ready) begin
+            if (work) begin
+                alu_flag <= 1;
+                alu_robpos <= robpos;
+                case (op) 
+                    `LUI: begin
+                        alu_isjump <= 0;
+                        alu_val <= imm;
+                    end
+                    `AUIPC: begin
+                        alu_isjump <= 0;
+                        alu_val <= pc + imm;
+                    end
+                    `JAL: begin
+                        alu_isjump <= 1;
+                        alu_val <= pc + 4;
+                        alu_jumpto <= pc + imm;
+                    end
+                    `JALR: begin
+                        alu_isjump <= 1;
+                        alu_val <= pc + 4;
+                        alu_jumpto <= (rs1 + imm) & `MINUS_ONE;
+                    end
+                    `BEQ: begin
+                        if (rs1 == rs2) begin
+                            alu_isjump <= 1;
+                            alu_jumpto <= pc + imm;
+                        end
+                    end
+                    `BNE: begin
+                        if (rs1 != rs2) begin
+                            alu_isjump <= 1;
+                            alu_jumpto <= pc + imm;
+                        end
+                    end
+                    `BLT: begin
+                        if ($signed(rs1) < $signed(rs2)) begin
+                            alu_isjump <= 1;
+                            alu_jumpto <= pc + imm;
+                        end
+                    end
+                    `BGE: begin
+                        if ($signed(rs1) >= $signed(rs2)) begin
+                            alu_isjump <= 1;
+                            alu_jumpto <= pc + imm;
+                        end
+                    end
+                    `BLTU: begin
+                        if (rs1 < rs2) begin
+                            alu_isjump <= 1;
+                            alu_jumpto <= pc + imm;
+                        end
+                    end
+                    `BGEU: begin
+                        if (rs1 >= rs2) begin
+                            alu_isjump <= 1;
+                            alu_jumpto <= pc + imm;
+                        end
+                    end
+                    `ADDI: begin
+                        alu_isjump <= 0;
+                        alu_val <= rs1 + imm;
+                    end
+                    `SLTI: begin
+                        alu_isjump <= 0;
+                        alu_val <= ($signed(rs1) < $signed(rs2));
+                    end
+                    `SLTIU: begin
+                        alu_isjump <= 0;
+                        alu_val <= (rs1 < imm);
+                    end
+                    `XORI: begin
+                        alu_isjump <= 0;
+                        alu_val <= rs1 ^ imm;
+                    end
+                    `ORI: begin
+                        alu_isjump <= 0;
+                        alu_val <= rs1 | imm;
+                    end
+                    `ANDI: begin
+                        alu_isjump <= 0;
+                        alu_val <= rs1 & imm;
+                    end
+                    `SLLI: begin
+                        alu_isjump <= 0;
+                        alu_val <= (rs1 << imm);
+                    end
+                    `SRLI: begin
+                        alu_isjump <= 0;
+                        alu_val <= (rs1 >> imm);
+                    end
+                    `SRAI: begin
+                        alu_isjump <= 0;
+                        alu_val <= ($signed(rs1) >> imm);
+                    end
+                    `ADD: begin
+                        alu_isjump <= 0;
+                        alu_val <= rs1 + rs2;
+                    end
+                    `SUB: begin
+                        alu_isjump <= 0;
+                        alu_val <= rs1 - rs2;
+                    end
+                    `SLL: begin
+                        alu_isjump <= 0;
+                        alu_val <= (rs1 << rs2);
+                    end
+                    `SLT: begin
+                        alu_isjump <= 0;
+                        alu_val <= ($signed(rs1) < $signed(rs2));
+                    end
+                    `SLTU: begin
+                        alu_isjump <= 0;
+                        alu_val <= (rs1 < rs2);
+                    end
+                    `XOR: begin
+                        alu_isjump <= 0;
+                        alu_val <= (rs1 ^ rs2);
+                    end
+                    `SRL: begin
+                        alu_isjump <= 0;
+                        alu_val <= (rs1 >> rs2);
+                    end
+                    `SRA: begin
+                        alu_isjump <= 0;
+                        alu_val <= ($signed(rs1) >> rs2);
+                    end
+                    `OR: begin
+                        alu_isjump <= 0;
+                        alu_val <= (rs1 | rs2);
+                    end
+                    `AND: begin
+                        alu_isjump <= 0;
+                        alu_val <= (rs1 & rs2);
+                    end
+                    default: begin
+                        alu_flag <= 0;
+                    end
+                endcase
+            end
+            else begin
+                alu_flag <= 0;
+            end
         end
     end
 endmodule

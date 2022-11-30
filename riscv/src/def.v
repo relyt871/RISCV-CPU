@@ -2,16 +2,35 @@
 
 `define PC_LEN 31:0
 `define INS_LEN 31:0
-`define REG_LEN 4:0
 `define INT_LEN 31:0
 `define IMM_LEN 31:0
 `define OP_LEN 5:0
-
 `define ADDR_LEN 31:0
 `define DATA_LEN 31:0
-`define ROB_LEN 3:0
-`define ROB_SIZ 4'b1111
-`define QUEUE_LEN 3:0
-`define QUEUE_SIZ 4'b1111
+
+`define CACHE_LEN 7:0
+`define CACHE_SIZ 9'b100000000
+`define CACHE_TAG_POS 31:8
+`define CACHE_TAG_LEN 23:0
+
+`define INSQ_LEN 4:0
+`define INSQ_MAX 4'b1111
+`define INSQ_SIZ 5'b10000
+
+`define REG_LEN 4:0
+`define REG_SIZ 6'b100000
+
+`define ROB_LEN 4:0
+`define ROB_MAX 4'b1111
+`define ROB_SIZ 5'b10000
+
+`define RS_LEN 3:0
+`define RS_SIZ 5'b10000
+
+`define LSB_LEN 3:0
+`define LSB_MAX 3'b111
+`define LSB_SIZ 5'b10000
+
+`define MEM_LEN 1:0
 
 `define MINUS_ONE 32'b11111111111111111111111111111111;

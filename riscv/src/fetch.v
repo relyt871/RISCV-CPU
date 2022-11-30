@@ -1,51 +1,58 @@
 `include "def.v"
 
-module Fetch (
+module fetch (
     input wire clk,
     input wire reset,
     input wire ready,
 
-    input wire mem_ok,
-    input wire [`INS_LEN] mem_din,
-    output reg fin_read,
-    output reg [`PC_LEN] nxt_addr,
+    //fetch from ins_cache
+    input wire fetch_in_flag,
+    input wire [`INS_LEN] fetch_ins,
+    output reg fetch_out_flag,
+    output reg [`PC_LEN] fetch_pc,
 
+    //fetch to ins_queue
     input wire insq_full,
-    output reg flag,
-    output reg [`INS_LEN] cur_ins,
-    output reg [`PC_LEN] cur_pc,
+    output reg push,
+    output reg [`INS_LEN] push_ins,
+    output reg [`PC_LEN] push_pc,
 
+    //ROB jump
     input wire jump,
-    input wire [`PC_LEN] pc_jump_to
+    input wire [`PC_LEN] pc_jumpto
 );
 
-    reg [`PC_LEN] PC;
+    reg [`PC_LEN] pc;
 
     always @(posedge clk) begin
         if (reset) begin
             pc <= 0;
-            fin_read <= 0;
-            nxt_addr <= 0;
-            flag <= 0;
+            fetch_out_flag <= 0;
+            push <= 0;
         end
         else if (ready) begin
             if (jump) begin
-                PC = pc_jump_to;
-                flag <= 0;
-                fin_read <= 1;
-                nxt_addr <= PC;
+                pc <= pc_jumpto;
+                fetch_out_flag <= 0;
+                push <= 0;
             end
-            else if (mem_ok && !insq_full) begin
-                fin_read <= 1;
-                nxt_addr <= PC + 3'b100;
-                flag <= 1;
-                cur_ins <= mem_din;
-                cur_pc <= PC;
-                PC <= PC + 3'b100;
+            else if (fetch_in_flag) begin
+                if (insq_full) begin
+                    fetch_out_flag <= 0;
+                    push <= 0;
+                end
+                else begin
+                    pc <= pc + 4;
+                    fetch_out_flag <= 0;
+                    push <= 1;
+                    push_ins <= fetch_ins;
+                    push_pc <= pc;
+                end
             end
             else begin
-                fin_read <= 0;
-                flag <= 0;
+                fetch_out_flag <= 1;
+                fetch_pc <= pc;
+                push <= 0;
             end
         end
     end
