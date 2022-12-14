@@ -32,6 +32,7 @@ module fetch (
         end
         else if (ready) begin
             if (jump) begin
+                //$display("jump to %h", pc_jumpto);
                 pc <= pc_jumpto;
                 fetch_out_flag <= 0;
                 push <= 0;

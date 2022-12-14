@@ -51,16 +51,17 @@ module lsbuffer (
     output reg [`ROB_LEN] lsb_out_robpos
 );
 
-    reg [`OP_LEN] lsb_op[`LSB_LEN];
-    reg [`IMM_LEN] lsb_imm[`LSB_LEN];
-    reg [`ROB_LEN] lsb_robpos[`LSB_LEN];
-    reg [`DATA_LEN] lsb_vj[`LSB_LEN];
-    reg lsb_qj[`LSB_LEN];
-    reg [`DATA_LEN] lsb_vk[`LSB_LEN];
-    reg lsb_qk[`LSB_LEN];
-    reg cancommit[`LSB_LEN];
+    reg [`OP_LEN] lsb_op[`LSB_ARR];
+    reg [`IMM_LEN] lsb_imm[`LSB_ARR];
+    reg [`ROB_LEN] lsb_robpos[`LSB_ARR];
+    reg [`DATA_LEN] lsb_vj[`LSB_ARR];
+    reg lsb_qj[`LSB_ARR];
+    reg [`DATA_LEN] lsb_vk[`LSB_ARR];
+    reg lsb_qk[`LSB_ARR];
+    reg cancommit[`LSB_ARR];
     reg [`LSB_LEN] head, tail;
-    integer i, siz;
+    integer i;
+    integer siz;
 
     always @(*) begin
         if (getpos) begin
@@ -73,10 +74,14 @@ module lsbuffer (
     end
     
     always @(posedge clk) begin
-        if (reset) begin
+        if (reset || clear) begin
             head <= 0;
             tail <= 0;
+            siz <= 0;
             lsb_full <= 0;
+            lsb_avail <= 0;
+            mem_out_flag <= 0;
+            lsb_out_flag <= 0;
         end
         else if (ready) begin
             if (rob_store_flag) begin
@@ -146,6 +151,7 @@ module lsbuffer (
                         lsb_qk[tail] <= 1;
                     end
                 end
+                tail <= ((tail == `LSB_MAX)? 0 : tail + 1);
             end
             if (head != tail && !lsb_qj[head] && !lsb_qk[head]) begin
                 case (lsb_op[head])
@@ -220,7 +226,7 @@ module lsbuffer (
                                     end
                                 endcase
                                 mem_output <= lsb_vk[head];
-                                siz <= siz + push ;
+                                siz <= siz + push;
                                 lsb_full <= (siz + push == `LSB_SIZ);
                             end
                         end

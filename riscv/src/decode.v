@@ -21,8 +21,10 @@ module decode (
     //rob and station must be available
     input wire rob_full,
     input wire rs_full,
+    input wire lsb_full,
     output reg rob_getpos,
-    output reg rs_getpos
+    output reg rs_getpos,
+    output reg lsb_getpos
 );
     wire [6:0] opcode;
     wire [2:0] func3;
@@ -30,17 +32,19 @@ module decode (
     assign func3 = ins[14:12];
     
     always @(*) begin
-        if (!decode_flag || rob_full || rs_full) begin
+        if (!decode_flag || rob_full || rs_full || lsb_full) begin
             decode_ok <= 0;
             rs1_query <= 0;
             rs2_query <= 0;
             rob_getpos <= 0;
             rs_getpos <= 0;
+            lsb_getpos <= 0;
         end 
         else begin
             decode_ok <= 1;
             rob_getpos <= 1;
             rs_getpos <= 1;
+            lsb_getpos <= 1;
             rd <= ins[11:7];
             rs1_pos <= ins[19:15];
             rs2_pos <= ins[24:20];

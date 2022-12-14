@@ -55,7 +55,7 @@ wire jump;
 wire [`PC_LEN] pc_jumpto;
 
 //ins-queue - decode
-wire insq_empty;
+wire insq_front;
 wire [`INS_LEN] insq_front_ins;
 wire [`PC_LEN] insq_front_pc;
 
@@ -82,6 +82,7 @@ wire rob_getpos;
 
 //decode - lsbuffer
 wire lsb_full;
+wire lsb_getpos;
 
 //regfile - robuffer
 wire unlock;
@@ -140,6 +141,7 @@ wire rs_ready;
 wire [`RS_LEN] rs_ready_pos;
 wire rs_front;
 wire [`RS_LEN] rs_front_pos;
+wire rs_front_ok;
 wire [`OP_LEN] rs_front_op;
 wire [`IMM_LEN] rs_front_imm;
 wire [`ADDR_LEN] rs_front_pc;
@@ -161,7 +163,7 @@ wire [`ROB_LEN] alu_robpos;
 
 //robuffer - lsbuffer
 wire rob_store_flag;
-wire [`ROB_LEN] rob_store_robpos;
+wire [`LSB_LEN] rob_store_lsbpos;
 
 //lsbuffer - mem
 wire lsb_mem_flag;
@@ -185,7 +187,7 @@ ins_cache Ins_Cache(
   .fetch_ins(fetch_ins),
 
   .mem_in_flag(mem_icache_flag),
-  .mem_in_ins(icache_mem_ins),
+  .mem_ins(icache_mem_ins),
   .mem_out_flag(icache_mem_flag),
   .mem_pc(icache_mem_pc)
 );
@@ -213,14 +215,15 @@ ins_queue Ins_Queue(
   .clk(clk_in),
   .reset(rst_in),
   .ready(rdy_in),
+  .clear(clear),
 
   .push(insq_push),
   .push_ins(insq_push_ins),
   .push_pc(insq_push_pc),
-  .insq_full(insq_full),
+  .full(insq_full),
 
-  .front(decode_ok),
-  .insq_empty(insq_empty),
+  .decode_ok(decode_ok),
+  .front(insq_front),
   .front_ins(insq_front_ins),
   .front_pc(insq_front_pc)
 );
@@ -243,14 +246,17 @@ decode Decode(
 
   .rob_full(rob_full),
   .rs_full(rs_full),
+  .lsb_full(lsb_full),
   .rob_getpos(rob_getpos),
-  .rs_getpos(rs_getpos)
+  .rs_getpos(rs_getpos),
+  .lsb_getpos(lsb_getpos)
 );
 
 regfile RegFile(
   .clk(clk_in),
   .reset(rst_in),
   .ready(rdy_in),
+  .clear(clear),
 
   .rs1_query(rs1_query),
   .rs1_pos(rs1_pos),
@@ -307,6 +313,8 @@ issue Issue(
   .issue_vk(issue_vk),
   .issue_qk(issue_qk),
 
+  .lock(lock),
+
   .rob_avail(rob_avail),
   .rob_avail_pos(rob_avail_pos),
   .rs1_rob_flag(rs1_rob_flag),
@@ -328,6 +336,7 @@ rsstation Reservation_Station(
   .clk(clk_in),
   .reset(rst_in),
   .ready(rdy_in),
+  .clear(clear),
 
   .getpos(rs_getpos),
   .rs_full(rs_full),
@@ -349,6 +358,7 @@ rsstation Reservation_Station(
 
   .front(rs_front),
   .front_pos(rs_front_pos),
+  .front_ok(rs_front_ok),
   .front_op(rs_front_op),
   .front_imm(rs_front_imm),
   .front_pc(rs_front_pc),
@@ -369,8 +379,9 @@ alu ALU(
   .clk(clk_in),
   .reset(rst_in),
   .ready(rdy_in),
+  .clear(clear),
 
-  .work(rs_front),
+  .work(rs_front_ok),
   .op(rs_front_op),
   .imm(rs_front_imm),
   .pc(rs_front_pc),
@@ -390,6 +401,7 @@ robuffer Reorder_Buffer(
   .reset(rst_in),
   .ready(rdy_in),
   .clear(clear),
+  .rob_clear(clear),
 
   .getpos(rob_getpos),
   .rob_full(rob_full),
@@ -417,13 +429,16 @@ robuffer Reorder_Buffer(
   .rs1_robpos(rs1_robpos),
   .rs2_flag(rs2_rob_ok),
   .rs2_robpos(rs2_robpos),
-  .rs1_rob_ok(rs1_rob_flag),
+  .rs1_ok(rs1_rob_flag),
   .rs1_val(rs1_rob_val),
-  .rs2_rob_ok(rs2_rob_flag),
+  .rs2_ok(rs2_rob_flag),
   .rs2_val(rs2_rob_val),
 
   .rob_store_flag(rob_store_flag),
-  .rob_store_robpos(rob_store_robpos),
+  .rob_store_lsbpos(rob_store_lsbpos),
+  .lsb_in_flag(lsb_load_flag),
+  .lsb_val(lsb_load_val),
+  .lsb_robpos(lsb_load_robpos),
 
   .jump(jump),
   .pc_jumpto(pc_jumpto)
@@ -442,6 +457,11 @@ lsbuffer LoadStore_buffer(
   .mem_pc(lsb_mem_pc),
   .mem_len(lsb_mem_len),
   .mem_output(lsb_mem_output),
+
+  .getpos(lsb_getpos),
+  .lsb_full(lsb_full),
+  .lsb_avail(lsb_avail),
+  .lsb_avail_pos(lsb_avail_pos),
 
   .push(lsb_push),
   .push_op(issue_op),

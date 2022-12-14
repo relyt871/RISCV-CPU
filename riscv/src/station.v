@@ -4,6 +4,7 @@ module rsstation (
     input wire clk,
     input wire reset,
     input wire ready,
+    input wire clear,
 
     //1) find ins ready to execute 2) provide available pos
     input wire getpos,
@@ -46,15 +47,15 @@ module rsstation (
     input wire [`DATA_LEN] lsb_val,
     input wire [`ROB_LEN] lsb_robpos
 );
-    reg [`OP_LEN] rs_op[`RS_LEN];
-    reg [`IMM_LEN] rs_imm[`RS_LEN];
-    reg [`ADDR_LEN] rs_pc[`RS_LEN];
-    reg [`ROB_LEN] rs_robpos[`RS_LEN];
-    reg [`DATA_LEN] rs_vj[`RS_LEN];
-    reg rs_qj[`RS_LEN];
-    reg [`DATA_LEN] rs_vk[`RS_LEN];
-    reg rs_qk[`RS_LEN];
-    reg busy[`RS_LEN];
+    reg [`OP_LEN] rs_op[`RS_ARR];
+    reg [`IMM_LEN] rs_imm[`RS_ARR];
+    reg [`ADDR_LEN] rs_pc[`RS_ARR];
+    reg [`ROB_LEN] rs_robpos[`RS_ARR];
+    reg [`DATA_LEN] rs_vj[`RS_ARR];
+    reg rs_qj[`RS_ARR];
+    reg [`DATA_LEN] rs_vk[`RS_ARR];
+    reg rs_qk[`RS_ARR];
+    reg busy[`RS_ARR];
     integer siz;
 
     integer i;
@@ -93,13 +94,16 @@ module rsstation (
 
     integer k;
     always @(posedge clk) begin
-        if (reset) begin
+        if (reset || clear) begin
             for (k = 0; k < `RS_SIZ; k = k + 1) begin
                 busy[k] <= 0;
             end
             front_ok <= 0;
             siz <= 0;
             rs_full <= 0;
+            rs_avail <= 0;
+            rs_ready <= 0;
+            front_ok <= 0;
         end
         else if (ready) begin
             //update values in the station
@@ -175,6 +179,7 @@ module rsstation (
                         rs_qk[push_pos] <= 1;
                     end
                 end
+                busy[push_pos] <= 1;
             end
             if (front) begin
                 front_ok <= 1;

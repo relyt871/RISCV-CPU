@@ -4,6 +4,7 @@ module regfile (
     input wire clk,
     input wire reset,
     input wire ready,
+    input wire clear,
 
     //ID requests value of registers
     input wire rs1_query,
@@ -31,9 +32,9 @@ module regfile (
     output reg [`DATA_LEN] rs2_val
 );
 
-    reg [`DATA_LEN] val[`REG_LEN];
-    reg [`ROB_LEN] qi[`REG_LEN];
-    reg busy[`REG_LEN];
+    reg [`DATA_LEN] val[`REG_ARR];
+    reg [`ROB_LEN] qi[`REG_ARR];
+    reg busy[`REG_ARR];
     integer i;
 
     always @(posedge clk) begin
@@ -44,12 +45,21 @@ module regfile (
                 busy[i] <= 0;
             end
         end
+        else if (clear) begin
+            for (i = 0; i < `REG_SIZ; i = i + 1) begin
+                qi[i] <= 0;
+                busy[i] <= 0;
+            end
+            if (unlock && unlock_rd != 0) begin
+                val[unlock_rd] <= unlock_val;
+            end
+        end
         else if (ready) begin
-            if (lock) begin
+            if (lock && lock_rd != 0) begin
                 qi[lock_rd] <= lock_robpos;
                 busy[lock_rd] <= 1;
             end
-            if (unlock) begin
+            if (unlock && unlock_rd != 0) begin
                 if (qi[unlock_rd] == unlock_robpos) begin
                     val[unlock_rd] <= unlock_val;
                     busy[unlock_rd] <= 0;

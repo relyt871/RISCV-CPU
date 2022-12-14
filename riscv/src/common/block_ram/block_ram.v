@@ -24,6 +24,8 @@
 *  Various generic, inferred block ram descriptors.
 ***************************************************************************************************/
 
+
+
 // Dual port RAM with synchronous read.  Modified version of listing 12.4 in "FPGA Prototyping by
 // Verilog Examples," itself a modified version of XST 8.11 v_rams_11.
 module dual_port_ram_sync
@@ -90,7 +92,7 @@ initial begin
   for (i=0;i<2**ADDR_WIDTH;i=i+1) begin
     ram[i] = 0;
   end
-  $readmemh("test.data", ram); // add test.data to vivado project or specify a valid file path
+  $readmemh("/mnt/d/CPPDEV/workspace/RISCV-CPU/riscv/testcase/gcd.data", ram); // add test.data to vivado project or specify a valid file path
 end
 
 endmodule

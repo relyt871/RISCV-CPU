@@ -4,6 +4,7 @@ module alu(
     input wire clk,
     input wire reset,
     input wire ready,
+    input wire clear,
 
     input wire work,
     input wire[`OP_LEN] op,
@@ -21,7 +22,7 @@ module alu(
 );
     
     always @(posedge clk) begin
-        if (reset) begin
+        if (reset || clear) begin
             alu_flag <= 0;
         end
         else if (ready) begin
@@ -52,11 +53,18 @@ module alu(
                             alu_isjump <= 1;
                             alu_jumpto <= pc + imm;
                         end
+                        else begin
+                            alu_isjump <= 0;
+                        end
                     end
                     `BNE: begin
                         if (rs1 != rs2) begin
+                            //$display("bne jump %h %h", rs1, rs2);
                             alu_isjump <= 1;
                             alu_jumpto <= pc + imm;
+                        end
+                        else begin
+                            alu_isjump <= 0;
                         end
                     end
                     `BLT: begin
@@ -64,11 +72,17 @@ module alu(
                             alu_isjump <= 1;
                             alu_jumpto <= pc + imm;
                         end
+                        else begin
+                            alu_isjump <= 0;
+                        end
                     end
                     `BGE: begin
                         if ($signed(rs1) >= $signed(rs2)) begin
                             alu_isjump <= 1;
                             alu_jumpto <= pc + imm;
+                        end
+                        else begin
+                            alu_isjump <= 0;
                         end
                     end
                     `BLTU: begin
@@ -76,11 +90,17 @@ module alu(
                             alu_isjump <= 1;
                             alu_jumpto <= pc + imm;
                         end
+                        else begin
+                            alu_isjump <= 0;
+                        end
                     end
                     `BGEU: begin
                         if (rs1 >= rs2) begin
                             alu_isjump <= 1;
                             alu_jumpto <= pc + imm;
+                        end
+                        else begin
+                            alu_isjump <= 0;
                         end
                     end
                     `ADDI: begin
@@ -114,6 +134,7 @@ module alu(
                     `SRLI: begin
                         alu_isjump <= 0;
                         alu_val <= (rs1 >> imm);
+                        //$display("srli %h %h", rs1, imm);
                     end
                     `SRAI: begin
                         alu_isjump <= 0;

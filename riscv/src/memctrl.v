@@ -31,9 +31,11 @@ module memctrl (
     reg busy;
     reg type; //0:read, 1:write
     reg bel; //1:lsb, 0:icache
+    reg read_stall;
     reg [`ADDR_LEN] start;
     reg [`MEM_LEN] len, now;
     reg [`DATA_LEN] toread, towrite;
+    reg stall;
 
     always @(posedge clk) begin
         if (reset) begin
@@ -43,8 +45,53 @@ module memctrl (
             lsb_mem_out_flag <= 0;
             icache_mem_out_flag <= 0;
         end
+        else if (clear) begin
+            if (busy && type == 1) begin //continue the unfinished write
+                if (now != len) begin
+                    mem_wr <= 1;
+                    lsb_mem_out_flag <= 0;
+                    icache_mem_out_flag <= 0;
+                    case (now)
+                        2'b01: begin
+                            mem_dout <= towrite[15:8];
+                        end
+                        2'b10: begin
+                            mem_dout <= towrite[23:16];
+                        end
+                        2'b11: begin
+                            mem_dout <= towrite[31:24];
+                        end
+                    endcase
+                    now <= now + 1;
+                    mem_a <= mem_a + 1;
+                end
+                else begin
+                    lsb_mem_out_flag <= 1;
+                    icache_mem_out_flag <= 0;
+                    mem_a <= 0;
+                    mem_wr <= 0;
+                    busy <= 0;
+                    stall <= 1;
+                end
+            end
+            else begin
+                busy <= 0;
+                mem_a <= 0;
+                mem_wr <= 0;
+                lsb_mem_out_flag <= 0;
+                icache_mem_out_flag <= 0;
+                stall <= 0;
+            end
+        end
         else if (ready) begin
-            if (!busy) begin  //initialize for next read/write
+            if (stall) begin
+                mem_a <= 0;
+                mem_wr <= 0;
+                lsb_mem_out_flag <= 0;
+                icache_mem_out_flag <= 0;
+                stall <= 0;
+            end
+            else if (!busy) begin  //initialize for next read/write
                 if (lsb_mem_in_flag) begin
                     busy <= 1;
                     type <= lsb_mem_type;
@@ -52,6 +99,7 @@ module memctrl (
                     start <= lsb_mem_pc;
                     len <= lsb_mem_len;
                     now <= (lsb_mem_type? 1 : 0);
+                    read_stall <= (lsb_mem_type? 0 : 1); //read requires 1 stall for mem_din
                     towrite <= lsb_mem_output;
                     mem_a <= lsb_mem_pc;
                     mem_wr <= lsb_mem_type;
@@ -64,8 +112,9 @@ module memctrl (
                     type <= 0;
                     bel <= 0;
                     start <= icache_mem_pc;
-                    len <= 3'b100;
+                    len <= 2'b11;
                     now <= 0;
+                    read_stall <= 1;
                     mem_a <= icache_mem_pc;
                     mem_wr <= 0;
                     lsb_mem_out_flag <= 0;
@@ -81,10 +130,35 @@ module memctrl (
             end
             else begin //read/write in progress
                 if (type == 0) begin //read
-                    if (now == len) begin
+                    if (read_stall) begin
+                        mem_a <= mem_a + 1;
+                        mem_wr <= 0;
+                        read_stall <= 0;
+                        lsb_mem_out_flag <= 0;
+                        icache_mem_out_flag <= 0;
+                    end
+                    else if (now != len) begin
+                        case (now)
+                            2'b00: begin
+                                toread[7:0] <= mem_din;
+                            end
+                            2'b01: begin
+                                toread[15:8] <= mem_din;
+                            end
+                            2'b10: begin
+                                toread[23:16] <= mem_din;
+                            end
+                        endcase
+                        now <= now + 1;
+                        mem_a <= mem_a + 1;
+                        mem_wr <= 0;
+                        lsb_mem_out_flag <= 0;
+                        icache_mem_out_flag <= 0;
+                    end
+                    else begin
                         mem_a <= 0;
                         mem_wr <= 0;
-                        if (bel == 0) begin
+                        if (bel) begin
                             lsb_mem_out_flag <= 1;
                             icache_mem_out_flag <= 0;
                         end
@@ -105,35 +179,11 @@ module memctrl (
                             end
                         endcase
                         busy <= 0;
-                    end
-                    else begin
-                        mem_wr <= 0;
-                        lsb_mem_out_flag <= 0;
-                        icache_mem_out_flag <= 0;
-                        case (now)
-                            2'b00: begin
-                                toread[7:0] <= mem_din;
-                            end
-                            2'b01: begin
-                                toread[15:8] <= mem_din;
-                            end
-                            2'b10: begin
-                                toread[23:16] <= mem_din;
-                            end
-                        endcase
-                        now <= now + 1;
-                        mem_a <= mem_a + 1;
+                        stall <= 1;
                     end
                 end
                 else begin //write
-                    if (now == len) begin
-                        lsb_mem_out_flag <= 1;
-                        icache_mem_out_flag <= 0;
-                        mem_a <= 0;
-                        mem_wr <= 0;
-                        busy <= 0;
-                    end
-                    else begin
+                    if (now != len) begin
                         mem_wr <= 1;
                         lsb_mem_out_flag <= 0;
                         icache_mem_out_flag <= 0;
@@ -150,6 +200,14 @@ module memctrl (
                         endcase
                         now <= now + 1;
                         mem_a <= mem_a + 1;
+                    end
+                    else begin
+                        lsb_mem_out_flag <= 1;
+                        icache_mem_out_flag <= 0;
+                        mem_a <= 0;
+                        mem_wr <= 0;
+                        busy <= 0;
+                        stall <= 1;
                     end
                 end
             end

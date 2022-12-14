@@ -60,6 +60,9 @@ module issue (
     input wire [`LSB_LEN] lsb_avail_pos,
     output reg lsb_push
 );
+    wire[1:0] op_type = ((op == `LB || op == `LH || op == `LW || op == `LBU || op == `LHU)? 2'b01 : 
+                         (op == `SB || op == `SH || op == `SW)? 2'b10 : 
+                         (op == `BEQ ||op == `BNE || op == `BLT || op == `BGE || op == `BLTU || op == `BGEU)? 2'b11 : 2'b00);
 
     always @(*) begin
         if (decode_flag) begin
@@ -69,7 +72,7 @@ module issue (
             issue_pc <= pc;
             issue_robpos <= rob_avail_pos;
             issue_lsbpos <= lsb_avail_pos;
-            if (rs_avail) begin
+            if (rs_avail && op_type == 2'b00 || op_type == 2'b11) begin
                 rs_push <= 1;
                 rs_push_pos <= rs_avail_pos;
             end
@@ -78,12 +81,28 @@ module issue (
             end
             if (rob_avail) begin
                 rob_push <= 1;
-                lock <= 1;
             end
             else begin
                 rob_push <= 0;
+            end
+            if (op_type == 2'b00 || op_type == 2'b01) begin
+                lock <= 1;
+            end
+            else begin
                 lock <= 0;
             end
+            if (lsb_avail && op_type == 2'b01 || op_type == 2'b10) begin
+                lsb_push <= 1;
+            end
+            else begin
+                lsb_push <= 0;
+            end
+        end
+        else begin
+            rs_push <= 0;
+            rob_push <= 0;
+            lock <= 0;
+            lsb_push <= 0;
         end
     end
 
@@ -127,27 +146,27 @@ module issue (
     always @(*) begin
         if (decode_flag && rs2_flag) begin
             if (rs2_type == 0) begin
-                issue_vj <= rs2_val;
-                issue_qj <= 0;
+                issue_vk <= rs2_val;
+                issue_qk <= 0;
                 rs2_rob_ok <= 0;
             end
             else begin
                 rs2_rob_ok <= 1;
                 rs2_robpos <= rs2_val;
                 if (rs2_rob_flag) begin
-                    issue_vj <= rs2_rob_val;
-                    issue_qj <= 0;
+                    issue_vk <= rs2_rob_val;
+                    issue_qk <= 0;
                 end
                 else begin
-                    issue_vj <= rs2_val;
-                    issue_qj <= 1;
+                    issue_vk <= rs2_val;
+                    issue_qk <= 1;
                 end
             end
         end
         else begin
             rs2_rob_ok <= 0;
-            issue_vj <= 0;
-            issue_qj <= 0;
+            issue_vk <= 0;
+            issue_qk <= 0;
         end
     end
 

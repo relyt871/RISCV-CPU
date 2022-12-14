@@ -4,46 +4,59 @@ module ins_queue (
     input wire clk,
     input wire reset,
     input wire ready,
+    input wire clear,
 
     //push new ins
     input wire push,
     input wire [`INS_LEN] push_ins,
     input wire [`PC_LEN] push_pc,
-    output reg insq_full,  
+    output reg full,  
 
     //pop front to decode
-    input wire front,
-    output reg insq_empty,
+    input wire decode_ok,
+    output reg front,
     output reg [`INS_LEN] front_ins,
     output reg [`PC_LEN] front_pc
 );
     reg [`INSQ_LEN] head, tail;
-    reg [`INSQ_LEN] siz;
-    reg [`INS_LEN] q_ins[`INSQ_LEN];
-    reg [`PC_LEN] q_pc[`INSQ_LEN];
+    integer siz;
+    reg [`INS_LEN] q_ins[`INSQ_ARR];
+    reg [`PC_LEN] q_pc[`INSQ_ARR];
 
     always @(posedge clk) begin
-        if (reset) begin
+        if (reset || clear) begin
             head <= 0;
             tail <= 0;
             siz <= 0;
-            insq_empty <= 1;
-            insq_full <= 0;
+            front <= 0;
+            full <= 0;
         end
         else if (ready) begin
             if (push) begin
                 q_ins[tail] <= push_ins;
                 q_pc[tail] <= push_pc;
+                tail <= ((tail == `INSQ_MAX)? 0 : tail + 1);
             end
-            if (front) begin
-                front_ins <= q_ins[head];
-                front_pc <= q_pc[head];
+            if (siz - decode_ok > 0) begin
+                front <= 1;
+                if (decode_ok) begin
+                    front_ins <= q_ins[(head == `INSQ_MAX)? 0 : head + 1];
+                    front_pc <= q_pc[(head == `INSQ_MAX)? 0 : head + 1];
+                    head <= ((head == `INSQ_MAX)? 0 : head + 1);
+                end
+                else begin
+                    front_ins <= q_ins[head];
+                    front_pc <= q_pc[head];
+                end
             end
-            head <= (front? ((head == `INSQ_MAX)? 0 : head + 1) : head);
-            tail <= (push? ((tail == `INSQ_MAX)? 0 : tail + 1) : tail);
-            siz <= (siz - front + push);
-            insq_empty <= (siz - front + push == 0);
-            insq_full <= (siz - front + push == `INSQ_MAX);
+            else begin
+                front <= 0;
+                if (decode_ok) begin
+                    head <= ((head == `INSQ_MAX)? 0 : head + 1);
+                end
+            end
+            siz <= (siz - decode_ok + push);
+            full <= (siz - decode_ok + push == `INSQ_SIZ);
         end
     end
 endmodule

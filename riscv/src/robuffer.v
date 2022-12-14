@@ -4,7 +4,8 @@ module robuffer (
     input wire clk,
     input wire reset,
     input wire ready,
-    output reg clear,
+    input wire clear,
+    output reg rob_clear,
 
     //provide available pos to new ins
     input wire getpos,
@@ -44,22 +45,27 @@ module robuffer (
 
     //commit to load-store-buffer
     output reg rob_store_flag,
-    output reg [`ROB_LEN] rob_store_robpos,
+    output reg [`ROB_LEN] rob_store_lsbpos,
+
+    //input from lsb load
+    input wire lsb_in_flag,
+    input wire [`DATA_LEN] lsb_val,
+    input wire [`ROB_LEN] lsb_robpos,
 
     //need to jump
     output reg jump,
-    output reg pc_jumpto
+    output reg [`PC_LEN] pc_jumpto
 );
-    reg [`OP_LEN] rob_op[`ROB_LEN];
-    reg [`REG_LEN] rob_rd[`ROB_LEN];
-    reg [`ADDR_LEN] rob_pc[`ROB_LEN];
-    reg [`DATA_LEN] rob_val[`ROB_LEN];
-    reg [`LSB_LEN] rob_lsbpos[`ROB_LEN];
-    reg rob_isjump[`ROB_LEN];
-    reg [`ADDR_LEN] rob_jumpto[`ROB_LEN];
-    reg cancommit[`ROB_LEN];
-    reg [`ROB_LEN] head, tail, siz;
-    integer i;
+    reg [`OP_LEN] rob_op[`ROB_ARR];
+    reg [`REG_LEN] rob_rd[`ROB_ARR];
+    reg [`ADDR_LEN] rob_pc[`ROB_ARR];
+    reg [`DATA_LEN] rob_val[`ROB_ARR];
+    reg [`LSB_LEN] rob_lsbpos[`ROB_ARR];
+    reg rob_isjump[`ROB_ARR];
+    reg [`ADDR_LEN] rob_jumpto[`ROB_ARR];
+    reg cancommit[`ROB_ARR];
+    reg [`ROB_LEN] head, tail;
+    integer i, siz;
 
     //provide available pos to new ins
     always @(*) begin  
@@ -93,13 +99,17 @@ module robuffer (
     end
 
     always @(posedge clk) begin
-        if (reset) begin
+        if (reset || clear) begin
+            rob_clear <= 0;
             head <= 0;
             tail <= 0;
-            clear <= 0;
-            unlock <= 0;
-            jump <= 0;
+            siz <= 0;
             rob_full <= 0;
+            unlock <= 0;
+            rs1_ok <= 0;
+            rs2_ok <= 0;
+            rob_store_flag <= 0;
+            jump <= 0;
         end
         else if (ready) begin
             if (push) begin   //push new ins
@@ -107,7 +117,8 @@ module robuffer (
                 rob_rd[tail] <= push_rd;
                 rob_pc[tail] <= push_pc;
                 rob_lsbpos[tail] <= push_lsbpos;
-                cancommit[tail] <= 0;
+                cancommit[tail] <= (push_op == `SB || push_op == `SH || push_op == `SW);
+                tail <= ((tail == `ROB_MAX)? 0 : tail + 1);
             end
             if (alu_flag) begin  //update by alu
                 rob_val[alu_robpos] <= alu_val;
@@ -115,16 +126,22 @@ module robuffer (
                 rob_jumpto[alu_robpos] <= alu_jumpto;
                 cancommit[alu_robpos] <= 1;
             end
+            if (lsb_in_flag) begin  //update by lsb load
+                rob_val[lsb_robpos] <= lsb_val;
+                cancommit[lsb_robpos] <= 1;
+            end
             if (head != tail && cancommit[head]) begin  //commit
+                //$display("commit pc %h", rob_pc[head]);
                 case (rob_op[head])
                     `JAL, `JALR, `BEQ, `BNE, `BLT, `BGE, `BLTU, `BGEU: begin
                         if (rob_isjump[head]) begin
-                            clear <= 1;
+                            //$display("rob jump to %h", rob_jumpto[head]);
+                            rob_clear <= 1;
                             jump <= 1;
                             pc_jumpto <= rob_jumpto[head];
                         end
                         else begin
-                            clear <= 0;
+                            rob_clear <= 0;
                             jump <= 0;
                         end
                         if (rob_op[head] == `JAL || rob_op[head] == `JALR) begin
@@ -136,39 +153,39 @@ module robuffer (
                         else begin
                             unlock <= 0;
                         end
+                        rob_store_flag <= 0;
                     end
                     `SB, `SH, `SW: begin
-                        clear <= 0;
+                        rob_clear <= 0;
                         jump <= 0;
                         unlock <= 0;
                         rob_store_flag <= 1;
-                        rob_store_robpos <= head;
+                        rob_store_lsbpos <= rob_lsbpos[head];
                     end
                     default: begin
-                        clear <= 0;
+                        rob_clear <= 0;
                         jump <= 0;
                         unlock <= 1;
                         unlock_rd <= rob_rd[head];
                         unlock_robpos <= head;
                         unlock_val <= rob_val[head];
+                        rob_store_flag <= 0;
                     end
                 endcase
+                head <= ((head == `ROB_MAX)? 0 : head + 1);
             end
             else begin
-                clear <= 0;
+                rob_clear <= 0;
                 unlock <= 0;
                 jump <= 0;
             end
-            head <= ((head != tail && cancommit[head])? ((head == `ROB_MAX)? 0 : head + 1) : head);
-            tail <= (push? ((tail == `ROB_MAX)? 0 : tail + 1) : tail);
             siz <= siz - (head != tail && cancommit[head]) + push;
             rob_full <= (siz - (head != tail && cancommit[head]) + push == `ROB_SIZ);
         end
         else begin
-            clear <= 0;
+            rob_clear <= 0;
             unlock <= 0;
             jump <= 0;
-            rob_full <= (head == 0? tail == `ROB_MAX : tail == head - 1);
         end
     end
 endmodule

@@ -20,10 +20,11 @@ module ins_cache (
 );
     wire [`CACHE_LEN] now_pos = fetch_pc[`CACHE_LEN];
     wire [`CACHE_TAG_LEN] now_tag = fetch_pc[`CACHE_TAG_POS];
-    reg [`INS_LEN] icache[`CACHE_LEN];
-    reg [`CACHE_TAG_LEN] tag[`CACHE_LEN];
-    reg busy[`CACHE_LEN];
+    reg [`INS_LEN] icache[`CACHE_ARR];
+    reg [`CACHE_TAG_LEN] tag[`CACHE_ARR];
+    reg busy[`CACHE_ARR];
     integer i;
+    reg stall;
 
     always @(posedge clk) begin
         if (reset) begin
@@ -32,12 +33,27 @@ module ins_cache (
                 tag[i] <= 0;
                 busy[i] <= 0;
             end
+            mem_out_flag <= 0;
+            fetch_out_flag <= 0;
+            stall <= 0;
+        end
+        else if (clear) begin
+            mem_out_flag <= 0;
+            fetch_out_flag <= 0;
+            stall <= 0;
         end
         else if (ready) begin
             if (fetch_in_flag) begin
-                if (busy[now_pos] && tag[now_pos] == now_tag) begin  //cache hit
+                if (stall) begin
+                    mem_out_flag <= 0;
+                    fetch_out_flag <= 0;
+                    stall <= 0;
+                end
+                else if (busy[now_pos] && tag[now_pos] == now_tag) begin  //cache hit
                     fetch_out_flag <= 1;
                     fetch_ins <= icache[now_pos];
+                    mem_out_flag <= 0;
+                    stall <= 1;
                 end
                 else begin
                     if (mem_in_flag) begin
@@ -47,10 +63,12 @@ module ins_cache (
                         fetch_out_flag <= 1;
                         fetch_ins <= mem_ins;
                         mem_out_flag <= 0;
+                        stall <= 1;
                     end
                     else begin
                         mem_out_flag <= 1;
                         mem_pc <= fetch_pc;
+                        fetch_out_flag <= 0;
                     end
                 end
             end
