@@ -60,7 +60,7 @@ module rsstation (
 
     integer i;
     always @(*) begin
-        if (reset || !getpos) begin
+        if (reset || clear || !getpos) begin
             rs_avail = 0;
         end
         else begin
@@ -76,7 +76,7 @@ module rsstation (
 
     integer j;
     always @(*) begin
-        if (reset) begin
+        if (reset || clear) begin
             rs_ready = 0;
         end
         else begin

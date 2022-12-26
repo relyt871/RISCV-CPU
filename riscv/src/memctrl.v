@@ -32,7 +32,7 @@ module memctrl (
     reg type; //0:read, 1:write
     reg bel; //1:lsb, 0:icache
     reg read_stall;
-    reg [`ADDR_LEN] start;
+    reg [`ADDR_LEN] mem_pos;
     reg [`MEM_LEN] len, now;
     reg [`DATA_LEN] toread, towrite;
     reg stall;
@@ -52,18 +52,19 @@ module memctrl (
                     lsb_mem_out_flag <= 0;
                     icache_mem_out_flag <= 0;
                     case (now)
-                        2'b01: begin
+                        2'b00: begin
                             mem_dout <= towrite[15:8];
                         end
-                        2'b10: begin
+                        2'b01: begin
                             mem_dout <= towrite[23:16];
                         end
-                        2'b11: begin
+                        2'b10: begin
                             mem_dout <= towrite[31:24];
                         end
                     endcase
                     now <= now + 1;
-                    mem_a <= mem_a + 1;
+                    mem_pos <= mem_pos + 1;
+                    mem_a <= mem_pos + 1;
                 end
                 else begin
                     lsb_mem_out_flag <= 1;
@@ -96,9 +97,9 @@ module memctrl (
                     busy <= 1;
                     type <= lsb_mem_type;
                     bel <= 1;
-                    start <= lsb_mem_pc;
+                    mem_pos <= lsb_mem_pc;
                     len <= lsb_mem_len;
-                    now <= (lsb_mem_type? 1 : 0);
+                    now <= 0;
                     read_stall <= (lsb_mem_type? 0 : 1); //read requires 1 stall for mem_din
                     towrite <= lsb_mem_output;
                     mem_a <= lsb_mem_pc;
@@ -111,7 +112,7 @@ module memctrl (
                     busy <= 1;
                     type <= 0;
                     bel <= 0;
-                    start <= icache_mem_pc;
+                    mem_pos <= icache_mem_pc;
                     len <= 2'b11;
                     now <= 0;
                     read_stall <= 1;
@@ -131,7 +132,8 @@ module memctrl (
             else begin //read/write in progress
                 if (type == 0) begin //read
                     if (read_stall) begin
-                        mem_a <= mem_a + 1;
+                        mem_pos <= mem_pos + 1;
+                        mem_a <= mem_pos + 1;
                         mem_wr <= 0;
                         read_stall <= 0;
                         lsb_mem_out_flag <= 0;
@@ -150,7 +152,8 @@ module memctrl (
                             end
                         endcase
                         now <= now + 1;
-                        mem_a <= mem_a + 1;
+                        mem_pos <= mem_pos + 1;
+                        mem_a <= mem_pos + 1;
                         mem_wr <= 0;
                         lsb_mem_out_flag <= 0;
                         icache_mem_out_flag <= 0;
@@ -188,18 +191,19 @@ module memctrl (
                         lsb_mem_out_flag <= 0;
                         icache_mem_out_flag <= 0;
                         case (now)
-                            2'b01: begin
+                            2'b00: begin
                                 mem_dout <= towrite[15:8];
                             end
-                            2'b10: begin
+                            2'b01: begin
                                 mem_dout <= towrite[23:16];
                             end
-                            2'b11: begin
+                            2'b10: begin
                                 mem_dout <= towrite[31:24];
                             end
                         endcase
                         now <= now + 1;
-                        mem_a <= mem_a + 1;
+                        mem_pos <= mem_pos + 1;
+                        mem_a <= mem_pos + 1;
                     end
                     else begin
                         lsb_mem_out_flag <= 1;

@@ -50,31 +50,31 @@ module decode (
             rs2_pos <= ins[24:20];
             pc <= ins_pc;
             case (opcode)
-                7'b0110111: begin
+                7'b0110111: begin   //37
                     op <= `LUI;
                     imm <= {ins[31:12], {12'b0}};
                     rs1_query <= 0;
                     rs2_query <= 0;
                 end
-                7'b0010111: begin
+                7'b0010111: begin   //17
                     op <= `AUIPC;
                     imm <= {ins[31:12], {12'b0}};
                     rs1_query <= 0;
                     rs2_query <= 0;
                 end
-                7'b1101111: begin
+                7'b1101111: begin   //6f
                     op <= `JAL;
                     imm <= {{13{ins[31]}}, ins[19:12], ins[20], ins[30:21], {1'b0}};
                     rs1_query <= 0;
                     rs2_query <= 0;
                 end
-                7'b1100111: begin
+                7'b1100111: begin   //67
                     op <= `JALR;
                     imm <= {{20{ins[31]}}, ins[31:20]};
                     rs1_query <= 1;
                     rs2_query <= 0;
                 end
-                7'b1100011: begin
+                7'b1100011: begin   //63
                     case (func3)
                         3'b000: op <= `BEQ;
                         3'b001: op <= `BNE;
@@ -88,7 +88,8 @@ module decode (
                     rs1_query <= 1;
                     rs2_query <= 1;
                 end
-                7'b0000011: begin
+                7'b0000011: begin   //03
+        //if (ins == 32'h5c4ba683) $display("decode %h %h %h %h", ins, ins[19:15], ins[11:7], {{20{ins[31]}}, ins[31:20]});
                     case (func3)
                         3'b000: op <= `LB;
                         3'b001: op <= `LH;
@@ -102,7 +103,7 @@ module decode (
                     rs1_query <= 1;
                     rs2_query <= 0;
                 end
-                7'b0100011: begin
+                7'b0100011: begin   //23
                     case (func3)
                         3'b000: op <= `SB;
                         3'b001: op <= `SH;
@@ -113,7 +114,7 @@ module decode (
                     rs1_query <= 1;
                     rs2_query <= 1;
                 end
-                7'b0010011: begin
+                7'b0010011: begin   //13
                     case (func3)
                         3'b000: op <= `ADDI;
                         3'b001: op <= `SLLI;
@@ -128,7 +129,7 @@ module decode (
                     rs1_query <= 1;
                     rs2_query <= 0;
                 end
-                7'b0110011: begin
+                7'b0110011: begin   //33
                     case (func3) 
                         3'b000: op <= (ins[30]? `SUB : `ADD);
                         3'b001: op <= `SLL;

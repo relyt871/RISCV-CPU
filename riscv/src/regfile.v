@@ -60,8 +60,8 @@ module regfile (
                 busy[lock_rd] <= 1;
             end
             if (unlock && unlock_rd != 0) begin
+                val[unlock_rd] <= unlock_val;  //!!!!!!!!!!!!!!
                 if (qi[unlock_rd] == unlock_robpos) begin
-                    val[unlock_rd] <= unlock_val;
                     busy[unlock_rd] <= 0;
                 end
             end
@@ -87,7 +87,7 @@ module regfile (
                 end
                 else begin
                     rs1_type <= 1;
-                    rs1_val <= {{27'b0}, qi[rs1_pos]};
+                    rs1_val <= {{28'b0}, qi[rs1_pos]};
                 end
             end 
         end
@@ -112,11 +112,10 @@ module regfile (
                 end
                 else begin
                     rs2_type <= 1;
-                    rs2_val <= {{27'b0}, qi[rs2_pos]};
+                    rs2_val <= {{28'b0}, qi[rs2_pos]};
                 end
             end 
         end
     end
-
 
 endmodule

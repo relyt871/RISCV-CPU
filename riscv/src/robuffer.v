@@ -131,12 +131,12 @@ module robuffer (
                 cancommit[lsb_robpos] <= 1;
             end
             if (head != tail && cancommit[head]) begin  //commit
-                //$display("commit pc %h", rob_pc[head]);
+//$display("commit %h", rob_pc[head]);
                 case (rob_op[head])
                     `JAL, `JALR, `BEQ, `BNE, `BLT, `BGE, `BLTU, `BGEU: begin
                         if (rob_isjump[head]) begin
-                            //$display("rob jump to %h", rob_jumpto[head]);
                             rob_clear <= 1;
+//$display("clear");
                             jump <= 1;
                             pc_jumpto <= rob_jumpto[head];
                         end
@@ -180,7 +180,7 @@ module robuffer (
                 jump <= 0;
             end
             siz <= siz - (head != tail && cancommit[head]) + push;
-            rob_full <= (siz - (head != tail && cancommit[head]) + push == `ROB_SIZ);
+            rob_full <= (siz - (head != tail && cancommit[head]) + push == `ROB_MAX);
         end
         else begin
             rob_clear <= 0;

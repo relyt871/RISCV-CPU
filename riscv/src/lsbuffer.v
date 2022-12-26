@@ -58,7 +58,7 @@ module lsbuffer (
     reg lsb_qj[`LSB_ARR];
     reg [`DATA_LEN] lsb_vk[`LSB_ARR];
     reg lsb_qk[`LSB_ARR];
-    reg cancommit[`LSB_ARR];
+    reg cancommit[`LSB_ARR], del[`LSB_ARR];
     reg [`LSB_LEN] head, tail;
     integer i;
     integer siz;
@@ -74,12 +74,29 @@ module lsbuffer (
     end
     
     always @(posedge clk) begin
-        if (reset || clear) begin
+        if (reset) begin
             head <= 0;
             tail <= 0;
             siz <= 0;
             lsb_full <= 0;
             lsb_avail <= 0;
+            mem_out_flag <= 0;
+            lsb_out_flag <= 0;
+        end
+        else if (clear) begin
+            for (i = 0; i < `LSB_SIZ; i = i + 1) begin  //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                if (!cancommit[i]) begin
+                    del[i] <= 1;
+                end
+            end
+            if (siz && cancommit[head] && mem_in_flag) begin
+                head <= ((head == `LSB_MAX)? 0 : head + 1);
+                siz <= siz - 1;
+                lsb_full <= (siz - 1 == `LSB_MAX);
+            end
+            else begin
+                lsb_full <= (siz == `LSB_MAX);
+            end
             mem_out_flag <= 0;
             lsb_out_flag <= 0;
         end
@@ -111,10 +128,13 @@ module lsbuffer (
                     end
                 end
             end
+
             if (push) begin
                 lsb_op[tail] <= push_op;
                 lsb_imm[tail] <= push_imm;
                 lsb_robpos[tail] <= push_robpos;
+                cancommit[tail] <= 0;
+                del[tail] <= 0;
                 if (!push_qj) begin
                     lsb_vj[tail] <= push_vj;
                     lsb_qj[tail] <= 0;
@@ -153,14 +173,22 @@ module lsbuffer (
                 end
                 tail <= ((tail == `LSB_MAX)? 0 : tail + 1);
             end
-            if (head != tail && !lsb_qj[head] && !lsb_qk[head]) begin
+
+            if (head != tail && del[head]) begin
+                mem_out_flag <= 0;
+                lsb_out_flag <= 0;
+                head <= ((head == `LSB_MAX)? 0 : head + 1);
+                siz <= siz + push - 1;
+                lsb_full <= (siz + push - 1 == `LSB_MAX);
+            end
+            else if (head != tail && !lsb_qj[head] && !lsb_qk[head]) begin
                 case (lsb_op[head])
                     `LB, `LH, `LW, `LBU, `LHU: begin
                         if (mem_in_flag) begin
                             mem_out_flag <= 0;
                             head <= ((head == `LSB_MAX)? 0 : head + 1);
                             siz <= siz + push - 1;
-                            lsb_full <= (siz + push - 1 == `LSB_SIZ);
+                            lsb_full <= (siz + push - 1 == `LSB_MAX);
                             lsb_out_flag <= 1;
                             lsb_out_robpos <= lsb_robpos[head];
                             case (lsb_op[head])
@@ -197,7 +225,7 @@ module lsbuffer (
                                 end
                             endcase
                             siz <= siz + push;
-                            lsb_full <= (siz + push == `LSB_SIZ);
+                            lsb_full <= (siz + push == `LSB_MAX);
                             lsb_out_flag <= 0;
                         end
                     end
@@ -208,7 +236,7 @@ module lsbuffer (
                                 mem_out_flag <= 0;
                                 head <= ((head == `LSB_MAX)? 0 : head + 1);
                                 siz <= siz + push - 1;
-                                lsb_full <= (siz + push - 1 == `LSB_SIZ);
+                                lsb_full <= (siz + push - 1 == `LSB_MAX);
                             end
                             else begin
                                 mem_out_flag <= 1;
@@ -227,13 +255,13 @@ module lsbuffer (
                                 endcase
                                 mem_output <= lsb_vk[head];
                                 siz <= siz + push;
-                                lsb_full <= (siz + push == `LSB_SIZ);
+                                lsb_full <= (siz + push == `LSB_MAX);
                             end
                         end
                         else begin
                             mem_out_flag <= 0;
                             siz <= siz + push;
-                            lsb_full <= (siz + push == `LSB_SIZ);
+                            lsb_full <= (siz + push == `LSB_MAX);
                         end
                     end
                 endcase
@@ -242,7 +270,7 @@ module lsbuffer (
                 mem_out_flag <= 0;
                 lsb_out_flag <= 0;
                 siz <= siz + push;
-                lsb_full <= (siz + push == `LSB_SIZ);
+                lsb_full <= (siz + push == `LSB_MAX);
             end
         end
     end

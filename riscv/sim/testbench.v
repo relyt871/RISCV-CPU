@@ -16,8 +16,8 @@ riscv_top #(.SIM(1)) top(
 );
 
 initial begin
-  $dumpfile("1.vcd");
-  $dumpvars;
+  //$dumpfile("1.vcd");
+  //$dumpvars;
   clk=0;
   rst=1;
   repeat(50) #1 clk=!clk;

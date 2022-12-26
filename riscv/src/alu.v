@@ -59,7 +59,6 @@ module alu(
                     end
                     `BNE: begin
                         if (rs1 != rs2) begin
-                            //$display("bne jump %h %h", rs1, rs2);
                             alu_isjump <= 1;
                             alu_jumpto <= pc + imm;
                         end
@@ -86,6 +85,7 @@ module alu(
                         end
                     end
                     `BLTU: begin
+                        //$display("bltu %h %h", rs1, rs2);
                         if (rs1 < rs2) begin
                             alu_isjump <= 1;
                             alu_jumpto <= pc + imm;
@@ -134,7 +134,6 @@ module alu(
                     `SRLI: begin
                         alu_isjump <= 0;
                         alu_val <= (rs1 >> imm);
-                        //$display("srli %h %h", rs1, imm);
                     end
                     `SRAI: begin
                         alu_isjump <= 0;

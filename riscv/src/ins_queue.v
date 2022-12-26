@@ -56,7 +56,7 @@ module ins_queue (
                 end
             end
             siz <= (siz - decode_ok + push);
-            full <= (siz - decode_ok + push == `INSQ_SIZ);
+            full <= (siz - decode_ok + push == `INSQ_MAX);
         end
     end
 endmodule

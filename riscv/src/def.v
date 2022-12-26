@@ -17,7 +17,6 @@
 `define INSQ_LEN 3:0
 `define INSQ_ARR 15:0
 `define INSQ_MAX 4'b1111
-`define INSQ_SIZ 5'b10000
 
 `define REG_LEN 4:0
 `define REG_ARR 31:0
@@ -26,7 +25,6 @@
 `define ROB_LEN 3:0
 `define ROB_ARR 15:0
 `define ROB_MAX 4'b1111
-`define ROB_SIZ 5'b10000
 
 `define RS_LEN 3:0
 `define RS_ARR 15:0
